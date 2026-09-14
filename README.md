@@ -87,3 +87,22 @@ automatically. Run `npx prisma migrate deploy` locally (pointed at the Neon
 - `/destination/[slug]` — destination overview, stays, map
 - `/business/[slug]` — listing detail + booking actions
 - `/dashboard` — business owner dashboard (stats, listing editor, leads)
+- `/admin` — password-protected admin panel (see below)
+
+## Admin panel
+
+`/admin` is a full CRUD control panel for States, Destinations, Businesses
+(with their Rooms, Amenities, and Host), and Leads.
+
+- Protected by a single shared password (`ADMIN_PASSWORD` env var). On login,
+  a signed, stateless session cookie is set (`ADMIN_SESSION_SECRET` env var) —
+  no session table needed. Enforced in `src/proxy.ts` for both `/admin/*`
+  pages and `/api/admin/*` routes.
+- Set both env vars (random values) locally in `.env` and on Vercel
+  (`vercel env add ADMIN_PASSWORD production`, same for `ADMIN_SESSION_SECRET`).
+- Gradient fields (e.g. "Image gradient classes") accept Tailwind class names
+  like `from-emerald-800 to-stone-900`. Tailwind only ships CSS for classes it
+  can see in the source at build time, so brand-new gradient combinations
+  typed into the admin panel won't render until they're added to
+  `src/lib/tailwind-safelist.tsx` and the app is rebuilt. Stick to combinations
+  already used elsewhere in the seed data to avoid this.
