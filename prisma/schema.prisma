@@ -1,0 +1,107 @@
+// Prisma schema for Overview Travel
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model State {
+  id       String   @id @default(cuid())
+  slug     String   @unique
+  name     String
+  emoji    String
+  gradient String
+  featured Boolean  @default(false)
+  order    Int      @default(0)
+
+  destinations Destination[]
+}
+
+model Destination {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  emoji       String
+  gradient    String
+  bestTime    String
+  budget      String
+  stay        String
+  altitude    String
+  rating      Float
+  description String
+  whyVisit    String   // JSON-encoded string[]
+  tags        String   // JSON-encoded string[]
+  order       Int      @default(0)
+
+  stateId String
+  state   State  @relation(fields: [stateId], references: [id])
+
+  businesses Business[]
+}
+
+model Business {
+  id            String  @id @default(cuid())
+  slug          String  @unique
+  name          String
+  type          String // Hotel | Resort | Homestay | Budget
+  location      String
+  description   String
+  rating        Float
+  reviews       Int
+  price         Int
+  originalPrice Int?
+  image         String // gradient token
+  tags          String // JSON-encoded string[]
+  order         Int     @default(0)
+  views         Int     @default(0)
+
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id])
+
+  amenities Amenity[]
+  rooms     Room[]
+  host      Host?
+  leads     Lead[]
+}
+
+model Amenity {
+  id         String   @id @default(cuid())
+  label      String
+  icon       String
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Room {
+  id         String   @id @default(cuid())
+  name       String
+  price      Int
+  size       String
+  guests     String
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Host {
+  id            String   @id @default(cuid())
+  name          String
+  title         String
+  yearsOnPlatform Int
+  responseTime  String
+  businessId    String   @unique
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  guestName  String
+  channel    String // WhatsApp | Call
+  createdAt  DateTime @default(now())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
