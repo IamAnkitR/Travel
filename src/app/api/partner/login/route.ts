@@ -3,8 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { COOKIE_NAME, MAX_AGE_SECONDS, createPartnerToken } from "@/lib/partnerAuth";
 import { serializeAccount } from "@/lib/partnerSerialize";
+import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
+  const allowed = await checkRateLimit(`partner-login:${clientIp(request)}`, 8, 10 * 60);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many attempts — please try again in a few minutes." }, { status: 429 });
+  }
+
   const body = await request.json().catch(() => ({}));
   const { email, password } = body as { email?: string; password?: string };
 
@@ -14,7 +20,7 @@ export async function POST(request: Request) {
 
   const account = await prisma.businessAccount.findUnique({
     where: { email: email.toLowerCase() },
-    include: { requestedDestination: true },
+    include: { scopes: { include: { destination: true } } },
   });
 
   if (!account || !(await verifyPassword(password, account.passwordHash))) {

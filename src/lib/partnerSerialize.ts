@@ -1,9 +1,21 @@
-import type { BusinessAccount, Destination } from "@prisma/client";
+import type { AccountScope, BusinessAccount, Destination } from "@prisma/client";
 
-export const BUSINESS_TYPES = ["Hotel", "Resort", "Homestay", "Budget"] as const;
+export function serializeScope(s: AccountScope & { destination?: Destination }) {
+  return {
+    id: s.id,
+    category: s.category,
+    type: s.type,
+    status: s.status,
+    rejectionReason: s.rejectionReason,
+    createdAt: s.createdAt,
+    reviewedAt: s.reviewedAt,
+    destinationId: s.destinationId,
+    destinationName: s.destination?.name,
+  };
+}
 
 export function serializeAccount(
-  a: BusinessAccount & { requestedDestination?: Destination }
+  a: BusinessAccount & { scopes?: (AccountScope & { destination?: Destination })[] }
 ) {
   return {
     id: a.id,
@@ -11,12 +23,7 @@ export function serializeAccount(
     contactName: a.contactName,
     businessName: a.businessName,
     phone: a.phone,
-    status: a.status,
-    rejectionReason: a.rejectionReason,
     createdAt: a.createdAt,
-    reviewedAt: a.reviewedAt,
-    requestedDestinationId: a.requestedDestinationId,
-    requestedDestinationName: a.requestedDestination?.name,
-    requestedType: a.requestedType,
+    scopes: a.scopes?.map(serializeScope) ?? [],
   };
 }

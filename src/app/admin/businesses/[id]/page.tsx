@@ -17,6 +17,7 @@ export default function EditBusinessPage() {
         setInitial({
           slug: b.slug,
           name: b.name,
+          category: b.category,
           type: b.type,
           location: b.location,
           description: b.description,
@@ -31,6 +32,8 @@ export default function EditBusinessPage() {
           rooms: b.rooms ?? [],
           amenities: b.amenities ?? [],
           host: b.host,
+          ownerBusinessName: b.ownerBusinessName,
+          auditLogs: b.auditLogs,
         });
       })
       .catch(() => setNotFound(true));

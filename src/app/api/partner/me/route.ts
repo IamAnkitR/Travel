@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 
   const account = await prisma.businessAccount.findUnique({
     where: { id: accountId },
-    include: { requestedDestination: true },
+    include: { scopes: { include: { destination: true }, orderBy: { createdAt: "asc" } } },
   });
   if (!account) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 

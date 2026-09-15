@@ -6,7 +6,13 @@ import { adminBusiness } from "@/lib/adminSerialize";
 async function loadOwned(id: string, accountId: string) {
   const business = await prisma.business.findUnique({
     where: { id },
-    include: { destination: true, rooms: true, amenities: true, host: true },
+    include: {
+      destination: true,
+      rooms: true,
+      amenities: true,
+      host: true,
+      auditLogs: { orderBy: { createdAt: "desc" } },
+    },
   });
   if (!business || business.ownerId !== accountId) return null;
   return business;

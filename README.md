@@ -60,11 +60,18 @@ automatically. Run `npx prisma migrate deploy` locally (pointed at the Neon
 
 - `State` — India states shown on the `/india` grid
 - `Destination` — hill stations / towns (belongs to a `State`)
-- `Business` — a stay/listing (belongs to a `Destination`, optionally owned by
-  a `BusinessAccount`), with `Room`, `Amenity`, and `Host` children
-- `BusinessAccount` — a partner's registration: login credentials, status
-  (`PENDING`/`APPROVED`/`REJECTED`), and the single destination + category
-  they're approved to publish under
+- `Business` — a listing (belongs to a `Destination`, optionally owned by a
+  `BusinessAccount` via an `AccountScope`), with a `category`
+  (Stay/Package/Experience/Transport) and a `type` within it, plus `Room`,
+  `Amenity`, and `Host` children
+- `BusinessAccount` — a partner's login credentials (email/password)
+- `AccountScope` — one (destination, category, type) combination a partner
+  has requested, each with its own `PENDING`/`APPROVED`/`REJECTED` status. An
+  account can hold several (e.g. a chain with branches in different towns, or
+  offering both stays and packages)
+- `AuditLog` — records admin edits to a partner-owned `Business` (field, old
+  value, new value), shown to both the admin and the partner
+- `RateLimitBucket` — backs fixed-window rate limiting on login/registration
 - `Lead` — a WhatsApp/Call/Booking lead generated from the site
 
 ## API routes
@@ -81,24 +88,28 @@ Public:
 | `GET /api/businesses/:slug` | Single stay detail (rooms, amenities, host) |
 | `POST /api/leads` | Create a lead (`businessSlug`, `channel`) |
 
-Partner (`/api/partner/**`, cookie-gated in `src/proxy.ts`):
+Partner (`/api/partner/**`, cookie-gated in `src/proxy.ts` — register/login/destinations are the public exceptions):
 
 | Route | Description |
 | --- | --- |
-| `POST /api/partner/register` | Public — submit a registration request |
-| `POST /api/partner/login` / `logout` | Public login / authenticated logout |
-| `GET /api/partner/me` | Current account + approval status |
-| `GET/POST /api/partner/businesses` | List / create own listings (destination + type are forced to the account's approved values, never taken from the request body) |
+| `GET /api/partner/destinations` | Public — real destination ids for the register/scope forms (`/api/destinations` substitutes slugs as ids for the rest of the public site, so this is a separate endpoint) |
+| `POST /api/partner/register` | Public, rate-limited — create an account with one or more requested scopes |
+| `POST /api/partner/login` / `logout` | Public rate-limited login / authenticated logout |
+| `GET /api/partner/me` | Current account + all its scopes and their statuses |
+| `POST /api/partner/scopes` | Request another (destination, category, type) after registration |
+| `GET/POST /api/partner/businesses` | List / create own listings — `scopeId` must be one of the account's own **approved** scopes; category/type/destination are taken from that scope, never from the request body |
 | `GET/PATCH/DELETE /api/partner/businesses/:id` | Manage an owned listing (404s if it belongs to someone else) |
 | `GET /api/partner/leads` | Leads across the account's own listings |
+| `GET /api/partner/summary` | Analytics: total views, leads (30d vs. previous 30d, with % change) |
 
-Admin (`/api/admin/**`, cookie-gated):
+Admin (`/api/admin/**`, cookie-gated, rate-limited on login):
 
 | Route | Description |
 | --- | --- |
-| `GET /api/admin/business-accounts` | List all partner registrations |
-| `PATCH /api/admin/business-accounts/:id` | Approve / reject / reset a registration |
-| `.../states`, `.../destinations`, `.../businesses`, `.../leads` | Full CRUD, unrestricted |
+| `GET /api/admin/business-accounts` | List all partner accounts with their scopes |
+| `DELETE /api/admin/business-accounts/:id` | Remove an account (its owned listings are orphaned, not deleted) |
+| `PATCH /api/admin/account-scopes/:id` | Approve / reject a single scope request — emails the partner (see below) |
+| `.../states`, `.../destinations`, `.../businesses`, `.../leads` | Full CRUD, unrestricted. `PATCH .../businesses/:id` writes an `AuditLog` entry per changed field whenever the listing has a partner owner |
 
 ## Pages
 
@@ -107,23 +118,47 @@ Admin (`/api/admin/**`, cookie-gated):
 - `/state/[slug]` — destinations within a state (e.g. `/state/uttarakhand`)
 - `/destination/[slug]` — destination overview, stays, map
 - `/business/[slug]` — listing detail + booking actions
-- `/partner/register` — business sign-up (destination + category picked here)
-- `/partner/login`, `/partner` — partner login and dashboard (listings, leads)
+- `/partner/register` — business sign-up (one or more destination/category rows)
+- `/partner/login`, `/partner` — partner login and dashboard (analytics, scope
+  statuses, listings)
+- `/partner/scopes/new` — request another destination/category after signup
 - `/admin` — password-protected admin panel (see below)
 
 ## Business registration & approval workflow
 
 1. A business submits `/partner/register` — business name, contact, email,
-   password, and **one** destination + **one** category (Hotel/Resort/
-   Homestay/Budget). Account is created with `status: PENDING`.
-2. An admin reviews it at `/admin/registrations` and approves or rejects.
-3. Once `APPROVED`, the partner can log into `/partner` and create listings —
-   but every listing they create or edit is force-set to the destination and
-   type captured at registration, enforced server-side in
-   `/api/partner/businesses` (the client can't override it, even by sending
-   different values in the request body — see the tamper check in that route).
+   password, and **one or more** (destination, category, type) rows, e.g.
+   `Ranikhet • Stay/Hotel` and `Dehradun • Package/Trek`. Each row becomes its
+   own `AccountScope` with `status: PENDING`; categories are Stay, Package,
+   Experience, or Transport (`src/lib/categories.ts`).
+2. An admin reviews each scope independently at `/admin/registrations` and
+   approves or rejects it — one account can have some scopes approved and
+   others rejected. The partner gets an email on either outcome (see below).
+3. A partner can only create a listing under a scope that is `APPROVED` and
+   belongs to them (checked server-side in `POST /api/partner/businesses` —
+   the destination/category/type come from the scope record, never from the
+   request body, so a crafted request can't publish outside what was
+   approved). They can request more scopes any time from `/partner`.
    Partners can only see/edit/delete their own listings; the site admin can
-   still manage everything regardless of ownership via `/admin/businesses`.
+   still manage everything regardless of ownership via `/admin/businesses`
+   (and every such override is written to that listing's `AuditLog`, visible
+   to both the admin and the partner).
+
+### Email notifications
+
+`src/lib/email.ts` sends via the [Resend](https://resend.com) HTTP API when a
+scope is approved or rejected. Without `RESEND_API_KEY` set, it no-ops with a
+console log — the rest of the app works fully without an email provider
+configured. To enable delivery, set `RESEND_API_KEY` and (optionally)
+`EMAIL_FROM` in `.env` / Vercel env vars.
+
+### Rate limiting
+
+`POST /api/partner/register`, `/api/partner/login`, and `/api/admin/login`
+are rate-limited (`src/lib/rateLimit.ts`) using a DB-backed fixed window keyed
+by IP + route — 5 registration attempts / 8 login attempts per 10 minutes,
+returning `429` once exceeded. It's DB-backed rather than in-memory so it
+works correctly across Vercel's serverless instances.
 
 ## Admin panel
 

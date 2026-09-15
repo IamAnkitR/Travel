@@ -41,15 +41,16 @@ model Destination {
   stateId String
   state   State  @relation(fields: [stateId], references: [id])
 
-  businesses       Business[]
-  businessAccounts BusinessAccount[]
+  businesses     Business[]
+  accountScopes  AccountScope[]
 }
 
 model Business {
   id            String  @id @default(cuid())
   slug          String  @unique
   name          String
-  type          String // Hotel | Resort | Homestay | Budget
+  category      String  @default("Stay") // Stay | Package | Experience | Transport
+  type          String // subtype within category, e.g. Hotel | Resort | Homestay | Budget
   location      String
   description   String
   rating        Float
@@ -67,36 +68,56 @@ model Business {
   ownerId String?
   owner   BusinessAccount? @relation(fields: [ownerId], references: [id])
 
+  scopeId String?
+  scope   AccountScope? @relation(fields: [scopeId], references: [id])
+
   amenities Amenity[]
   rooms     Room[]
   host      Host?
   leads     Lead[]
+  auditLogs AuditLog[]
 }
 
-enum BusinessAccountStatus {
+model BusinessAccount {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  contactName  String
+  businessName String
+  phone        String?
+  createdAt    DateTime @default(now())
+
+  scopes     AccountScope[]
+  businesses Business[]
+}
+
+enum ScopeStatus {
   PENDING
   APPROVED
   REJECTED
 }
 
-model BusinessAccount {
-  id           String                 @id @default(cuid())
-  email        String                 @unique
-  passwordHash String
-  contactName  String
-  businessName String
-  phone        String?
-  status       BusinessAccountStatus  @default(PENDING)
+// A single (destination, category, type) combination a partner has
+// requested to publish under. An account can hold several — e.g. a chain
+// with branches in different towns, or offering both stays and packages.
+model AccountScope {
+  id              String      @id @default(cuid())
+  category        String // Stay | Package | Experience | Transport
+  type            String // subtype within category
+  status          ScopeStatus @default(PENDING)
   rejectionReason String?
-  createdAt    DateTime               @default(now())
-  reviewedAt   DateTime?
+  createdAt       DateTime    @default(now())
+  reviewedAt      DateTime?
 
-  // The single destination + category this partner is approved to publish under.
-  requestedDestinationId String
-  requestedDestination   Destination @relation(fields: [requestedDestinationId], references: [id])
-  requestedType          String // Hotel | Resort | Homestay | Budget
+  accountId String
+  account   BusinessAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id])
 
   businesses Business[]
+
+  @@index([accountId])
 }
 
 model Amenity {
@@ -134,4 +155,26 @@ model Lead {
   createdAt  DateTime @default(now())
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+// Records admin edits to a partner-owned business, for dispute resolution.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actor      String // "admin" today; room for named admins later
+  field      String
+  oldValue   String?
+  newValue   String?
+  createdAt  DateTime @default(now())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+// Backs simple fixed-window rate limiting for public write endpoints
+// (registration, login). Key is typically "<route>:<ip>".
+model RateLimitBucket {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
 }

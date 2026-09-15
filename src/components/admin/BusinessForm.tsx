@@ -2,18 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { History, Plus, Trash2 } from "lucide-react";
 import FormField, { inputClass, textareaClass } from "@/components/admin/FormField";
+import { CATEGORIES, CATEGORY_TYPES } from "@/lib/categories";
 
 type AdminDestinationOption = { id: string; name: string };
 
 type RoomForm = { name: string; price: number; size: string; guests: string };
 type AmenityForm = { label: string; icon: string };
 type HostForm = { name: string; title: string; yearsOnPlatform: number; responseTime: string };
+type AuditEntry = { id: string; field: string; oldValue: string | null; newValue: string | null; createdAt: string };
 
 export type BusinessFormValue = {
   slug: string;
   name: string;
+  category: string;
   type: string;
   location: string;
   description: string;
@@ -28,11 +31,14 @@ export type BusinessFormValue = {
   rooms: RoomForm[];
   amenities: AmenityForm[];
   host: HostForm | null;
+  ownerBusinessName?: string;
+  auditLogs?: AuditEntry[];
 };
 
 const EMPTY: BusinessFormValue = {
   slug: "",
   name: "",
+  category: "Stay",
   type: "Hotel",
   location: "",
   description: "",
@@ -123,7 +129,7 @@ export default function BusinessForm({
             <input className={inputClass} value={form.slug} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))} />
           </FormField>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <FormField label="Destination">
             <select className={inputClass} value={form.destinationId} onChange={(e) => setForm((f) => ({ ...f, destinationId: e.target.value }))}>
               {destinations.map((d) => (
@@ -133,9 +139,22 @@ export default function BusinessForm({
               ))}
             </select>
           </FormField>
+          <FormField label="Category">
+            <select
+              className={inputClass}
+              value={form.category}
+              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value, type: CATEGORY_TYPES[e.target.value][0] }))}
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </FormField>
           <FormField label="Type">
             <select className={inputClass} value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
-              {["Hotel", "Resort", "Homestay", "Budget"].map((t) => (
+              {CATEGORY_TYPES[form.category].map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
@@ -331,6 +350,28 @@ export default function BusinessForm({
         )}
         {!form.host && <div className="text-xs text-stone-400">No host set.</div>}
       </div>
+
+      {form.ownerBusinessName && (
+        <div className="bg-stone-50 border border-stone-200 rounded-[14px] px-4 py-2.5 text-sm text-stone-600">
+          Owned by partner <strong>{form.ownerBusinessName}</strong> — editing here overrides their listing directly.
+        </div>
+      )}
+
+      {form.auditLogs && form.auditLogs.length > 0 && (
+        <div className="bg-white border border-stone-200 rounded-[16px] p-6">
+          <h3 className="font-semibold text-sm flex items-center gap-2 mb-3">
+            <History className="w-4 h-4" /> Edit history (admin overrides on this owned listing)
+          </h3>
+          <div className="space-y-1.5 text-xs text-stone-500">
+            {form.auditLogs.map((l) => (
+              <div key={l.id}>
+                {new Date(l.createdAt).toLocaleString()} — <strong className="text-stone-700">{l.field}</strong>: {l.oldValue ?? "—"} →{" "}
+                {l.newValue ?? "—"}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && <div className="text-sm text-red-600">{error}</div>}
 

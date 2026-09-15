@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { adminBusiness } from "@/lib/adminSerialize";
+import { logAdminBusinessEdit } from "@/lib/auditLog";
 
 export async function GET(
   _request: Request,
@@ -9,7 +10,14 @@ export async function GET(
   const { id } = await params;
   const business = await prisma.business.findUnique({
     where: { id },
-    include: { destination: true, rooms: true, amenities: true, host: true },
+    include: {
+      destination: true,
+      rooms: true,
+      amenities: true,
+      host: true,
+      owner: true,
+      auditLogs: { orderBy: { createdAt: "desc" } },
+    },
   });
   if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 });
   return NextResponse.json({ business: adminBusiness(business) });
@@ -22,6 +30,7 @@ type HostInput = { name: string; title: string; yearsOnPlatform: number; respons
 type BusinessInput = {
   slug?: string;
   name?: string;
+  category?: string;
   type?: string;
   location?: string;
   description?: string;
@@ -43,10 +52,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const before = await prisma.business.findUnique({ where: { id } });
+  if (!before) return NextResponse.json({ error: "Business not found" }, { status: 404 });
+
   const body = (await request.json().catch(() => ({}))) as BusinessInput;
   const {
     slug,
     name,
+    category,
     type,
     location,
     description,
@@ -80,6 +93,7 @@ export async function PATCH(
         data: {
           slug,
           name,
+          category,
           type,
           location,
           description,
@@ -102,6 +116,11 @@ export async function PATCH(
         include: { destination: true, rooms: true, amenities: true, host: true },
       });
     });
+
+    if (before.ownerId) {
+      await logAdminBusinessEdit(id, before, { name, category, type, location, description, price, originalPrice, destinationId });
+    }
+
     return NextResponse.json({ business: adminBusiness(business) });
   } catch {
     return NextResponse.json({ error: "Business not found or slug already in use" }, { status: 400 });

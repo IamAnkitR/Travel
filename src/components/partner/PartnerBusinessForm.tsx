@@ -10,6 +10,7 @@ type AmenityForm = { label: string; icon: string };
 type HostForm = { name: string; title: string; yearsOnPlatform: number; responseTime: string };
 
 export type PartnerBusinessFormValue = {
+  scopeId?: string;
   slug: string;
   name: string;
   location: string;
@@ -23,7 +24,15 @@ export type PartnerBusinessFormValue = {
   host: HostForm | null;
 };
 
+export type ApprovedScopeOption = {
+  id: string;
+  destinationName?: string;
+  category: string;
+  type: string;
+};
+
 const EMPTY: PartnerBusinessFormValue = {
+  scopeId: "",
   slug: "",
   name: "",
   location: "",
@@ -43,10 +52,12 @@ export default function PartnerBusinessForm({
   initial,
   businessId,
   lockedLabel,
+  approvedScopes,
 }: {
   initial?: Partial<PartnerBusinessFormValue>;
   businessId?: string;
-  lockedLabel: string;
+  lockedLabel?: string;
+  approvedScopes?: ApprovedScopeOption[];
 }) {
   const router = useRouter();
   const [form, setForm] = useState<PartnerBusinessFormValue>({ ...EMPTY, ...initial });
@@ -90,9 +101,28 @@ export default function PartnerBusinessForm({
 
   return (
     <div className="space-y-6 max-w-[640px]">
-      <div className="bg-emerald-50 border border-emerald-200 rounded-[14px] px-4 py-2.5 text-sm text-emerald-800">
-        This listing is locked to <strong>{lockedLabel}</strong>.
-      </div>
+      {lockedLabel ? (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-[14px] px-4 py-2.5 text-sm text-emerald-800">
+          This listing is locked to <strong>{lockedLabel}</strong>.
+        </div>
+      ) : (
+        approvedScopes && (
+          <div className="bg-white border border-stone-200 rounded-[16px] p-6">
+            <FormField label="Destination & category">
+              <select className={inputClass} value={form.scopeId} onChange={(e) => setForm((f) => ({ ...f, scopeId: e.target.value }))}>
+                <option value="" disabled>
+                  Choose an approved destination/category…
+                </option>
+                {approvedScopes.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.destinationName} • {s.category} / {s.type}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+        )
+      )}
 
       <div className="bg-white border border-stone-200 rounded-[16px] p-6 space-y-4">
         <div className="grid grid-cols-2 gap-3">
@@ -270,7 +300,7 @@ export default function PartnerBusinessForm({
       <div className="flex items-center gap-2">
         <button
           onClick={save}
-          disabled={saving || !form.name || !form.slug}
+          disabled={saving || !form.name || !form.slug || (!businessId && !form.scopeId)}
           className="h-11 px-6 rounded-full bg-stone-900 text-white text-sm font-semibold disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save"}

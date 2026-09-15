@@ -20,6 +20,7 @@ type AmenityInput = { label: string; icon: string };
 type HostInput = { name: string; title: string; yearsOnPlatform: number; responseTime: string } | null;
 
 type BusinessInput = {
+  scopeId?: string;
   slug?: string;
   name?: string;
   location?: string;
@@ -37,20 +38,21 @@ export async function POST(request: Request) {
   const accountId = request.headers.get(PARTNER_ID_HEADER);
   if (!accountId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const account = await prisma.businessAccount.findUnique({ where: { id: accountId } });
-  if (!account) return NextResponse.json({ error: "Account not found" }, { status: 404 });
-  if (account.status !== "APPROVED") {
-    return NextResponse.json(
-      { error: "Your account is not approved yet — you can't publish listings until an admin approves your registration." },
-      { status: 403 }
-    );
+  const body = (await request.json().catch(() => ({}))) as BusinessInput;
+  const { scopeId, slug, name, location, description, price, originalPrice, image, tags, rooms, amenities, host } = body;
+
+  if (!scopeId || !slug || !name || !location) {
+    return NextResponse.json({ error: "scopeId, slug, name, and location are required" }, { status: 400 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as BusinessInput;
-  const { slug, name, location, description, price, originalPrice, image, tags, rooms, amenities, host } = body;
-
-  if (!slug || !name || !location) {
-    return NextResponse.json({ error: "slug, name, and location are required" }, { status: 400 });
+  // The scope must belong to this account AND be approved — this is what
+  // actually restricts which destination/category/type a listing can use.
+  const scope = await prisma.accountScope.findUnique({ where: { id: scopeId } });
+  if (!scope || scope.accountId !== accountId) {
+    return NextResponse.json({ error: "Invalid scope" }, { status: 400 });
+  }
+  if (scope.status !== "APPROVED") {
+    return NextResponse.json({ error: "That destination/category isn't approved yet" }, { status: 403 });
   }
 
   try {
@@ -58,10 +60,12 @@ export async function POST(request: Request) {
       data: {
         slug,
         name,
-        // Locked to what was approved at registration — never taken from client input.
-        type: account.requestedType,
-        destinationId: account.requestedDestinationId,
-        ownerId: account.id,
+        // Locked to the approved scope — never taken from client input.
+        category: scope.category,
+        type: scope.type,
+        destinationId: scope.destinationId,
+        scopeId: scope.id,
+        ownerId: accountId,
         location,
         description: description || "",
         rating: 0,

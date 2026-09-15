@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { COOKIE_NAME, MAX_AGE_SECONDS, computeAdminToken, verifyPassword } from "@/lib/adminAuth";
+import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
+  const allowed = await checkRateLimit(`admin-login:${clientIp(request)}`, 8, 10 * 60);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many attempts — please try again in a few minutes." }, { status: 429 });
+  }
+
   const body = await request.json().catch(() => ({}));
   const { password } = body as { password?: string };
 

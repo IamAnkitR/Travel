@@ -7,7 +7,7 @@ export async function GET() {
     prisma.destination.count(),
     prisma.business.count(),
     prisma.lead.count(),
-    prisma.businessAccount.count({ where: { status: "PENDING" } }),
+    prisma.accountScope.count({ where: { status: "PENDING" } }),
     prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { business: true } }),
   ]);
 
