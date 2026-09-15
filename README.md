@@ -146,11 +146,14 @@ Admin (`/api/admin/**`, cookie-gated, rate-limited on login):
 
 ### Email notifications
 
-`src/lib/email.ts` sends via the [Resend](https://resend.com) HTTP API when a
-scope is approved or rejected. Without `RESEND_API_KEY` set, it no-ops with a
-console log — the rest of the app works fully without an email provider
-configured. To enable delivery, set `RESEND_API_KEY` and (optionally)
-`EMAIL_FROM` in `.env` / Vercel env vars.
+`src/lib/email.ts` sends via SMTP (nodemailer) when a scope is approved or
+rejected — defaults to Gmail (`smtp.gmail.com:465`). Without `SMTP_USER`/
+`SMTP_PASS` set, it no-ops with a console log — the rest of the app works
+fully without an email provider configured. To enable delivery, set
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `EMAIL_FROM` in
+`.env` / Vercel env vars. For Gmail, `SMTP_PASS` must be an
+[App Password](https://myaccount.google.com/apppasswords), not the account's
+regular password (Google blocks regular-password SMTP login for security).
 
 ### Rate limiting
 

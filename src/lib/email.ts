@@ -1,31 +1,40 @@
+import nodemailer from "nodemailer";
+
+let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+
+function getTransporter() {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) return null;
+
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: Number(process.env.SMTP_PORT) || 465,
+      secure: true,
+      auth: { user, pass },
+    });
+  }
+  return transporter;
+}
+
 /**
- * Minimal transactional email sender via the Resend HTTP API (no SDK
- * dependency — plain fetch). No-ops with a console log when RESEND_API_KEY
- * isn't set, so the rest of the app works without an email provider
- * configured; set RESEND_API_KEY and EMAIL_FROM to enable delivery.
+ * Minimal transactional email sender via SMTP (nodemailer) — configured for
+ * Gmail with an app password by default. No-ops with a console log when
+ * SMTP_USER/SMTP_PASS aren't set, so the rest of the app works without an
+ * email provider configured.
  */
 export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || "Overview <onboarding@resend.dev>";
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER || "Overview <no-reply@overview.app>";
+  const client = getTransporter();
 
-  if (!apiKey) {
-    console.log(`[email:skipped — RESEND_API_KEY not set] to=${to} subject="${subject}"`);
+  if (!client) {
+    console.log(`[email:skipped — SMTP_USER/SMTP_PASS not set] to=${to} subject="${subject}"`);
     return { skipped: true };
   }
 
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ from, to, subject, html }),
-    });
-    if (!res.ok) {
-      console.error(`[email:failed] ${res.status} ${await res.text().catch(() => "")}`);
-      return { skipped: false, ok: false };
-    }
+    await client.sendMail({ from, to, subject, html });
     return { skipped: false, ok: true };
   } catch (err) {
     console.error("[email:error]", err);
