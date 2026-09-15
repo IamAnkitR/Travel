@@ -60,12 +60,16 @@ automatically. Run `npx prisma migrate deploy` locally (pointed at the Neon
 
 - `State` — India states shown on the `/india` grid
 - `Destination` — hill stations / towns (belongs to a `State`)
-- `Business` — a stay/listing (belongs to a `Destination`), with `Room`,
-  `Amenity`, and `Host` children
-- `Lead` — a WhatsApp/Call/Booking lead generated from the site, aggregated
-  on `/dashboard`
+- `Business` — a stay/listing (belongs to a `Destination`, optionally owned by
+  a `BusinessAccount`), with `Room`, `Amenity`, and `Host` children
+- `BusinessAccount` — a partner's registration: login credentials, status
+  (`PENDING`/`APPROVED`/`REJECTED`), and the single destination + category
+  they're approved to publish under
+- `Lead` — a WhatsApp/Call/Booking lead generated from the site
 
 ## API routes
+
+Public:
 
 | Route | Description |
 | --- | --- |
@@ -75,9 +79,26 @@ automatically. Run `npx prisma migrate deploy` locally (pointed at the Neon
 | `GET /api/destinations/:slug` | Single destination detail |
 | `GET /api/businesses` | List stays (`?destination=`, `?type=`) |
 | `GET /api/businesses/:slug` | Single stay detail (rooms, amenities, host) |
-| `PATCH /api/businesses/:slug` | Update a listing (used by `/dashboard`) |
 | `POST /api/leads` | Create a lead (`businessSlug`, `channel`) |
-| `GET /api/dashboard` | Aggregated stats + recent leads for a business |
+
+Partner (`/api/partner/**`, cookie-gated in `src/proxy.ts`):
+
+| Route | Description |
+| --- | --- |
+| `POST /api/partner/register` | Public — submit a registration request |
+| `POST /api/partner/login` / `logout` | Public login / authenticated logout |
+| `GET /api/partner/me` | Current account + approval status |
+| `GET/POST /api/partner/businesses` | List / create own listings (destination + type are forced to the account's approved values, never taken from the request body) |
+| `GET/PATCH/DELETE /api/partner/businesses/:id` | Manage an owned listing (404s if it belongs to someone else) |
+| `GET /api/partner/leads` | Leads across the account's own listings |
+
+Admin (`/api/admin/**`, cookie-gated):
+
+| Route | Description |
+| --- | --- |
+| `GET /api/admin/business-accounts` | List all partner registrations |
+| `PATCH /api/admin/business-accounts/:id` | Approve / reject / reset a registration |
+| `.../states`, `.../destinations`, `.../businesses`, `.../leads` | Full CRUD, unrestricted |
 
 ## Pages
 
@@ -86,20 +107,39 @@ automatically. Run `npx prisma migrate deploy` locally (pointed at the Neon
 - `/state/[slug]` — destinations within a state (e.g. `/state/uttarakhand`)
 - `/destination/[slug]` — destination overview, stays, map
 - `/business/[slug]` — listing detail + booking actions
-- `/dashboard` — business owner dashboard (stats, listing editor, leads)
+- `/partner/register` — business sign-up (destination + category picked here)
+- `/partner/login`, `/partner` — partner login and dashboard (listings, leads)
 - `/admin` — password-protected admin panel (see below)
+
+## Business registration & approval workflow
+
+1. A business submits `/partner/register` — business name, contact, email,
+   password, and **one** destination + **one** category (Hotel/Resort/
+   Homestay/Budget). Account is created with `status: PENDING`.
+2. An admin reviews it at `/admin/registrations` and approves or rejects.
+3. Once `APPROVED`, the partner can log into `/partner` and create listings —
+   but every listing they create or edit is force-set to the destination and
+   type captured at registration, enforced server-side in
+   `/api/partner/businesses` (the client can't override it, even by sending
+   different values in the request body — see the tamper check in that route).
+   Partners can only see/edit/delete their own listings; the site admin can
+   still manage everything regardless of ownership via `/admin/businesses`.
 
 ## Admin panel
 
 `/admin` is a full CRUD control panel for States, Destinations, Businesses
-(with their Rooms, Amenities, and Host), and Leads.
+(with their Rooms, Amenities, and Host), business Registrations, and Leads.
 
 - Protected by a single shared password (`ADMIN_PASSWORD` env var). On login,
   a signed, stateless session cookie is set (`ADMIN_SESSION_SECRET` env var) —
   no session table needed. Enforced in `src/proxy.ts` for both `/admin/*`
-  pages and `/api/admin/*` routes.
-- Set both env vars (random values) locally in `.env` and on Vercel
-  (`vercel env add ADMIN_PASSWORD production`, same for `ADMIN_SESSION_SECRET`).
+  pages and `/api/admin/*` routes. Partner accounts use the same pattern with
+  their own `PARTNER_SESSION_SECRET`, but a real per-account signed token
+  (email/password checked against a scrypt hash) rather than a single shared
+  password.
+- Set env vars (random values) locally in `.env` and on Vercel
+  (`vercel env add ADMIN_PASSWORD production`, same for `ADMIN_SESSION_SECRET`
+  and `PARTNER_SESSION_SECRET`).
 - Gradient fields (e.g. "Image gradient classes") accept Tailwind class names
   like `from-emerald-800 to-stone-900`. Tailwind only ships CSS for classes it
   can see in the source at build time, so brand-new gradient combinations

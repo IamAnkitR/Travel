@@ -5,7 +5,7 @@ import { adminBusiness } from "@/lib/adminSerialize";
 export async function GET() {
   const businesses = await prisma.business.findMany({
     orderBy: { order: "asc" },
-    include: { destination: true, _count: { select: { leads: true } } },
+    include: { destination: true, owner: true, _count: { select: { leads: true } } },
   });
   return NextResponse.json({ businesses: businesses.map(adminBusiness) });
 }

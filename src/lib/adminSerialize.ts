@@ -1,4 +1,4 @@
-import type { Business, Destination, State, Room, Amenity, Host, Lead } from "@prisma/client";
+import type { Business, Destination, State, Room, Amenity, Host, Lead, BusinessAccount } from "@prisma/client";
 
 export function adminState(s: State & { _count?: { destinations: number } }) {
   return {
@@ -43,6 +43,7 @@ export function adminBusiness(
     rooms?: Room[];
     amenities?: Amenity[];
     host?: Host | null;
+    owner?: BusinessAccount | null;
     _count?: { leads: number };
   }
 ) {
@@ -64,6 +65,9 @@ export function adminBusiness(
     destinationId: b.destinationId,
     destinationName: b.destination?.name,
     leadCount: b._count?.leads,
+    ownerId: b.ownerId,
+    ownerBusinessName: b.owner?.businessName,
+    ownerEmail: b.owner?.email,
     rooms: b.rooms?.map((r) => ({ id: r.id, name: r.name, price: r.price, size: r.size, guests: r.guests })),
     amenities: b.amenities?.map((a) => ({ id: a.id, label: a.label, icon: a.icon })),
     host: b.host

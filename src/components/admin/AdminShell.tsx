@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, ChartColumn, LayoutDashboard, LogOut, MapPin, MessageCircle } from "lucide-react";
+import { Building2, ChartColumn, LayoutDashboard, LogOut, MapPin, MessageCircle, UserCheck } from "lucide-react";
 
 const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+  { href: "/admin/registrations", label: "Registrations", icon: UserCheck },
   { href: "/admin/states", label: "States", icon: MapPin },
   { href: "/admin/destinations", label: "Destinations", icon: ChartColumn },
   { href: "/admin/businesses", label: "Businesses", icon: Building2 },

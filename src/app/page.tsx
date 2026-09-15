@@ -82,7 +82,7 @@ export default function HomePage() {
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/dashboard"
+              href="/partner"
               className="hidden md:flex text-white/70 hover:text-white text-sm font-medium px-3 py-1.5 rounded-full hover:bg-white/10 transition"
             >
               For Businesses
@@ -233,7 +233,7 @@ export default function HomePage() {
           </div>
           <div className="mt-10 space-y-4">
             <Link
-              href="/dashboard"
+              href="/partner"
               onClick={() => setMenuOpen(false)}
               className="w-full text-left text-white text-lg font-medium py-3 border-b border-white/10 block"
             >

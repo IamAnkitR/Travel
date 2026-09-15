@@ -256,7 +256,7 @@ export default function BusinessPage() {
             <span className="text-stone-400 ml-2">Explore anywhere. Understand everything.</span>
           </Link>
           <div className="flex items-center gap-5 text-stone-500">
-            <Link href="/dashboard" className="hover:text-stone-900 font-medium">
+            <Link href="/partner" className="hover:text-stone-900 font-medium">
               For Businesses
             </Link>
             <Link href="/" className="hover:text-stone-900">

@@ -41,7 +41,8 @@ model Destination {
   stateId String
   state   State  @relation(fields: [stateId], references: [id])
 
-  businesses Business[]
+  businesses       Business[]
+  businessAccounts BusinessAccount[]
 }
 
 model Business {
@@ -63,10 +64,39 @@ model Business {
   destinationId String
   destination   Destination @relation(fields: [destinationId], references: [id])
 
+  ownerId String?
+  owner   BusinessAccount? @relation(fields: [ownerId], references: [id])
+
   amenities Amenity[]
   rooms     Room[]
   host      Host?
   leads     Lead[]
+}
+
+enum BusinessAccountStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model BusinessAccount {
+  id           String                 @id @default(cuid())
+  email        String                 @unique
+  passwordHash String
+  contactName  String
+  businessName String
+  phone        String?
+  status       BusinessAccountStatus  @default(PENDING)
+  rejectionReason String?
+  createdAt    DateTime               @default(now())
+  reviewedAt   DateTime?
+
+  // The single destination + category this partner is approved to publish under.
+  requestedDestinationId String
+  requestedDestination   Destination @relation(fields: [requestedDestinationId], references: [id])
+  requestedType          String // Hotel | Resort | Homestay | Budget
+
+  businesses Business[]
 }
 
 model Amenity {

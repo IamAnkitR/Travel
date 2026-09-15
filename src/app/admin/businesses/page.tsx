@@ -12,6 +12,7 @@ type AdminBusiness = {
   price: number;
   rating: number;
   leadCount?: number;
+  ownerBusinessName?: string;
 };
 
 export default function AdminBusinessesPage() {
@@ -45,6 +46,7 @@ export default function AdminBusinessesPage() {
               <th className="px-5 py-3 font-semibold">Price</th>
               <th className="px-5 py-3 font-semibold">Rating</th>
               <th className="px-5 py-3 font-semibold">Leads</th>
+              <th className="px-5 py-3 font-semibold">Owner</th>
             </tr>
           </thead>
           <tbody>
@@ -60,11 +62,18 @@ export default function AdminBusinessesPage() {
                 <td className="px-5 py-3 text-stone-500">₹{b.price.toLocaleString("en-IN")}</td>
                 <td className="px-5 py-3 text-stone-500">{b.rating}</td>
                 <td className="px-5 py-3 text-stone-500">{b.leadCount ?? 0}</td>
+                <td className="px-5 py-3 text-stone-500">
+                  {b.ownerBusinessName ? (
+                    <span className="text-[11px] px-2 py-1 rounded-full bg-stone-100">{b.ownerBusinessName}</span>
+                  ) : (
+                    <span className="text-stone-300">—</span>
+                  )}
+                </td>
               </tr>
             ))}
             {businesses.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-8 text-center text-stone-400">
+                <td colSpan={7} className="px-5 py-8 text-center text-stone-400">
                   No businesses yet.
                 </td>
               </tr>

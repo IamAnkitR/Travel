@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Building2, ChartColumn, MapPin, MessageCircle } from "lucide-react";
+import { Building2, ChartColumn, MapPin, MessageCircle, UserCheck } from "lucide-react";
 
 type Summary = {
-  counts: { states: number; destinations: number; businesses: number; leads: number };
+  counts: { states: number; destinations: number; businesses: number; leads: number; pendingRegistrations: number };
   recentLeads: { id: string; guestName: string; channel: string; createdAt: string; businessName: string }[];
 };
 
@@ -20,6 +20,13 @@ export default function AdminOverviewPage() {
   }, []);
 
   const cards = [
+    {
+      label: "Pending registrations",
+      value: summary?.counts.pendingRegistrations,
+      href: "/admin/registrations",
+      icon: UserCheck,
+      highlight: !!summary?.counts.pendingRegistrations,
+    },
     { label: "States", value: summary?.counts.states, href: "/admin/states", icon: MapPin },
     { label: "Destinations", value: summary?.counts.destinations, href: "/admin/destinations", icon: ChartColumn },
     { label: "Businesses", value: summary?.counts.businesses, href: "/admin/businesses", icon: Building2 },
@@ -31,10 +38,16 @@ export default function AdminOverviewPage() {
       <h1 className="text-[28px] font-bold tracking-tight mb-1">Overview</h1>
       <p className="text-stone-500 text-sm mb-8">Manage everything on the site from here.</p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
         {cards.map((c) => (
-          <Link key={c.label} href={c.href} className="bg-white border border-stone-200 rounded-[16px] p-5 hover:shadow-md transition">
-            <div className="w-9 h-9 rounded-full bg-stone-100 grid place-items-center mb-3">
+          <Link
+            key={c.label}
+            href={c.href}
+            className={`border rounded-[16px] p-5 hover:shadow-md transition ${
+              c.highlight ? "bg-amber-50 border-amber-200" : "bg-white border-stone-200"
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-full grid place-items-center mb-3 ${c.highlight ? "bg-amber-100" : "bg-stone-100"}`}>
               <c.icon className="w-4 h-4" />
             </div>
             <div className="text-[26px] font-bold tracking-tight">{c.value ?? "—"}</div>
