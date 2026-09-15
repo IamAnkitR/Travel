@@ -67,3 +67,11 @@ export function scopeReviewEmail(params: {
     }</p>`,
   };
 }
+
+export function passwordResetEmail(params: { contactName: string; resetUrl: string }) {
+  const { contactName, resetUrl } = params;
+  return {
+    subject: "Reset your Overview partner password",
+    html: `<p>Hi ${contactName},</p><p>Someone requested a password reset for your Overview partner account. Click below to set a new password — this link expires in 1 hour and can only be used once.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can safely ignore this email.</p>`,
+  };
+}

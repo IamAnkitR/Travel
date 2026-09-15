@@ -87,8 +87,24 @@ model BusinessAccount {
   phone        String?
   createdAt    DateTime @default(now())
 
-  scopes     AccountScope[]
-  businesses Business[]
+  scopes      AccountScope[]
+  businesses  Business[]
+  resetTokens PasswordResetToken[]
+}
+
+// A single-use, time-limited password reset link. Only the SHA-256 hash of
+// the token is stored, so a DB read alone can't be used to reset a password.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  accountId String
+  account   BusinessAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
 }
 
 enum ScopeStatus {

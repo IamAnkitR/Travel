@@ -51,6 +51,11 @@ function LoginForm() {
           <FormField label="Password">
             <input type="password" className={inputClass} value={password} onChange={(e) => setPassword(e.target.value)} />
           </FormField>
+          <div className="text-right -mt-1">
+            <Link href="/partner/forgot-password" className="text-xs text-stone-500 hover:text-stone-900">
+              Forgot password?
+            </Link>
+          </div>
           {error && <div className="text-xs text-red-600">{error}</div>}
           <button
             type="submit"

@@ -5,9 +5,13 @@ import { COOKIE_NAME as PARTNER_COOKIE, PARTNER_ID_HEADER, verifyPartnerToken } 
 const PARTNER_PUBLIC_PATHS = new Set([
   "/partner/login",
   "/partner/register",
+  "/partner/forgot-password",
+  "/partner/reset-password",
   "/api/partner/login",
   "/api/partner/register",
   "/api/partner/destinations",
+  "/api/partner/forgot-password",
+  "/api/partner/reset-password",
 ]);
 
 async function handleAdmin(request: NextRequest, pathname: string) {
