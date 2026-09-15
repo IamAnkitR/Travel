@@ -28,7 +28,7 @@ export default function PartnerRegisterPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/destinations")
+    fetch("/api/partner/destinations")
       .then((r) => r.json())
       .then((d) => {
         const opts = (d.destinations ?? []).map((x: { id: string; name: string }) => ({ id: x.id, name: x.name }));

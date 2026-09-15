@@ -7,6 +7,7 @@ const PARTNER_PUBLIC_PATHS = new Set([
   "/partner/register",
   "/api/partner/login",
   "/api/partner/register",
+  "/api/partner/destinations",
 ]);
 
 async function handleAdmin(request: NextRequest, pathname: string) {
